@@ -36,7 +36,7 @@ const getApiKey = () => {
   }
 };
 
-const ai = new GoogleGenerativeAI({ apiKey: getApiKey() });
+const genAI = new GoogleGenerativeAI(getApiKey());
 
 // Types
 interface EmergencyReport {
@@ -134,7 +134,11 @@ export default function App() {
     setIsAnalyzing(true);
     setLastError(null);
     try {
-      const model = ai.getGenerativeModel({
+      if (!getApiKey()) {
+        throw new Error("Gemini API Key is missing. Please set it in your environment variables.");
+      }
+
+      const model = genAI.getGenerativeModel({
         model: "gemini-1.5-flash",
         systemInstruction: "You are an emergency response AI. Classify the user's emergency description into emergencyType (Fire, Medical, Security, Other), priority (Low, Medium, High), and provide a confidence score (0-100).",
       });
@@ -156,12 +160,10 @@ export default function App() {
             properties: {
               emergencyType: {
                 type: SchemaType.STRING,
-                description: "The type of emergency.",
                 enum: ["Fire", "Medical", "Security", "Other"]
               },
               priority: {
                 type: SchemaType.STRING,
-                description: "The priority level.",
                 enum: ["Low", "Medium", "High"]
               },
               confidence: {

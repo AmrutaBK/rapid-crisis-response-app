@@ -1,0 +1,72 @@
+{
+  "entities": {
+    "EmergencyReport": {
+      "title": "Emergency Report",
+      "description": "A report of an emergency incident in the hospitality facility.",
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the emergency provided by the reporter."
+        },
+        "emergencyType": {
+          "type": "string",
+          "enum": ["Fire", "Medical", "Security", "Other"],
+          "description": "The category of the emergency."
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["Low", "Medium", "High"],
+          "description": "The urgency level of the emergency."
+        },
+        "confidence": {
+          "type": "number",
+          "description": "AI confidence score for the classification (0-100)."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Pending", "In Progress", "Resolved"],
+          "description": "Current status of the emergency response."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of when the report was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of the last update."
+        },
+        "reporterId": {
+          "type": "string",
+          "description": "UID of the user who reported the emergency."
+        }
+      },
+      "required": ["description", "emergencyType", "priority", "confidence", "status", "createdAt", "updatedAt", "reporterId"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "A user with administrative privileges to manage emergencies.",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "firestore": {
+    "/reports/{reportId}": {
+      "schema": "EmergencyReport",
+      "description": "Collection of all emergency reports."
+    },
+    "/admins/{adminId}": {
+      "schema": "Admin",
+      "description": "List of authorized administrators."
+    }
+  }
+}

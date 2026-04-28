@@ -1,0 +1,57 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Reports collection
+    match /reports/{reportId} {
+      allow get: if isSignedIn() && (resource.data.reporterId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.reporterId == request.auth.uid || isAdmin());
+      
+      allow create: if isSignedIn() 
+        && isValidEmergencyReport(request.resource.data)
+        && request.resource.data.reporterId == request.auth.uid
+        && request.resource.data.status == "Pending"
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow update: if isSignedIn() && (
+        // Admin resolving or updating status
+        (isAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']) 
+         && request.resource.data.updatedAt == request.time)
+      );
+    }
+
+    // Admins collection (Read-only for signed in users to check status, but only managed by system/manual)
+    match /admins/{adminId} {
+      allow get: if isSignedIn();
+    }
+
+    function isValidEmergencyReport(data) {
+      return data.keys().hasAll(['description', 'emergencyType', 'priority', 'confidence', 'status', 'createdAt', 'updatedAt', 'reporterId'])
+        && data.keys().size() == 8
+        && data.description is string && data.description.size() <= 2000
+        && data.emergencyType in ["Fire", "Medical", "Security", "Other"]
+        && data.priority in ["Low", "Medium", "High"]
+        && data.confidence is number
+        && data.status in ["Pending", "In Progress", "Resolved"]
+        && data.reporterId is string;
+    }
+  }
+}

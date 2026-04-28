@@ -26,7 +26,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 
 // Local types for AI fallback
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 
 const getApiKey = () => {
   try {
@@ -36,7 +36,7 @@ const getApiKey = () => {
   }
 };
 
-const ai = new GoogleGenAI({ apiKey: getApiKey() });
+const ai = new GoogleGenerativeAI({ apiKey: getApiKey() });
 
 // Types
 interface EmergencyReport {
@@ -134,9 +134,12 @@ export default function App() {
     setIsAnalyzing(true);
     setLastError(null);
     try {
-      // Use the recommended gemini-3-flash-preview model from the skill
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+      const model = ai.getGenerativeModel({
+        model: "gemini-1.5-flash",
+        systemInstruction: "You are an emergency response AI. Classify the user's emergency description into emergencyType (Fire, Medical, Security, Other), priority (Low, Medium, High), and provide a confidence score (0-100).",
+      });
+
+      const response = await model.generateContent({
         contents: [
           {
             role: "user",
@@ -146,24 +149,23 @@ export default function App() {
               Return the classification in exact JSON format.` }]
           }
         ],
-        config: {
-          systemInstruction: "You are an emergency response AI. Classify the user's emergency description into emergencyType (Fire, Medical, Security, Other), priority (Low, Medium, High), and provide a confidence score (0-100).",
+        generationConfig: {
           responseMimeType: "application/json",
           responseSchema: {
-            type: Type.OBJECT,
+            type: SchemaType.OBJECT,
             properties: {
               emergencyType: {
-                type: Type.STRING,
+                type: SchemaType.STRING,
                 description: "The type of emergency.",
                 enum: ["Fire", "Medical", "Security", "Other"]
               },
               priority: {
-                type: Type.STRING,
+                type: SchemaType.STRING,
                 description: "The priority level.",
                 enum: ["Low", "Medium", "High"]
               },
               confidence: {
-                type: Type.NUMBER,
+                type: SchemaType.NUMBER,
                 description: "Confidence score from 0 to 100."
               }
             },
@@ -172,7 +174,7 @@ export default function App() {
         }
       });
 
-      const analysis = JSON.parse(response.text);
+      const analysis = JSON.parse(response.response.text());
 
       setIsSubmitting(true);
       await addDoc(collection(db, "reports"), {
